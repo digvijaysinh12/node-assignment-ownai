@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { User} from "../entities/User.js";
 import dotenv from 'dotenv'
 import jwt from 'jsonwebtoken'
+import { ILike, Like } from "typeorm";
 
 
 dotenv.config();
@@ -113,6 +114,7 @@ export const loginController = async(req,res) => {
         {expiresIn:"1h"}
     )
 
+    console.log(token)
     // Store token in cookie httpOnly: true makes it safe from JS access
 
     res.cookie("token",token, {
@@ -134,3 +136,73 @@ export const loginController = async(req,res) => {
     }
 
 }
+
+
+export const searchUserController = async (req, res) => {
+  try {
+    // we can access role from token
+    const role = req.user.role;
+
+    // Only Admin can access this route
+    if (role !== "Admin") {
+      return res.status(401).json({
+        success: false,
+        message: "Access denied. Only Admin can view users.",
+      });
+    }
+
+    // Get search and country from request
+    const { search, country } = req.body;
+
+    // Get repository to query database
+    const userData = AppDataSource.getRepository(User);
+
+    
+    let users;
+
+    if (search && country) {
+      // Search name OR email and filter by country
+      users = await userData.find({
+        where: [
+          { name: Like(`${search}%`), country },
+          { email: ILike(`${search}%`), country }
+        ],
+        select: ["id", "name", "email", "role", "country"] 
+      });
+    } else if (search) {
+      // Search only name OR email
+      users = await userData.find({
+        where: [
+          { name: Like(`${search}%`) },
+          { email: ILike(`${search}%`) }
+        ],
+        select: ["id", "name", "email", "role", "country"]
+      });
+    } else if (country) {
+      // Filter only by country
+      users = await userData.find({
+        where: { country },
+        select: ["id", "name", "email", "role", "country"]
+      });
+    } else {
+      // No filter, list all users
+      users = await userData.find({
+        select: ["id", "name", "email", "role", "country"]
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Users fetched successfully",
+      users
+    });
+
+  } catch (error) {
+    console.error("Error in searchUserController:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
+};
+
