@@ -1,5 +1,3 @@
-Absolutely! Here's your documentation rewritten in a proper README.md format suitable for GitHub:
-
 # User Management API
 
 A simple **Node.js + Express + TypeORM + MySQL** project for user registration, login, searching users, and fetching user details with **role-based access control** (Admin/Staff).  
