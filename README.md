@@ -49,8 +49,8 @@ A simple **Node.js + Express + TypeORM + MySQL** project for user registration, 
 1. **Clone the repository**
 
 ```bash
-git clone <repo-url>
-cd <repo-folder>
+git clone https://github.com/digvijaysinh12/node-assignment-ownai.git
+cd node-assignment-ownai
 
 
 Install dependencies
@@ -172,33 +172,20 @@ Response:
 }
 
 Middleware
-
 authMiddleware → Checks JWT token from cookie and adds req.user to request.
 
 Database
-
 TypeORM used for MySQL connection.
-
 Auto-generates tables based on User entity.
 
 User Table Columns:
-
 id (Primary, Auto Increment)
-
 name
-
 email (Unique)
-
 password
-
 role (default: Staff)
-
 phone
-
 city
-
 country
-
 created_at
-
 updated_at
