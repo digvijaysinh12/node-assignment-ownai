@@ -1,6 +1,6 @@
 import { AppDataSource } from "../db.js";
 import bcrypt from 'bcrypt'
-import { User} from "../entities/User.js";
+import { User } from "../entities/User.js";
 import dotenv from 'dotenv'
 import jwt from 'jsonwebtoken'
 import { ILike, Like } from "typeorm";
@@ -8,59 +8,60 @@ import { ILike, Like } from "typeorm";
 
 dotenv.config();
 
-export const registerController = async(req,res) => {
-    try{
-    
-    
-    const {name,email,password,role,phone,city,country} = req.body;
+//This is register controler
+export const registerController = async (req, res) => {
+    try {
 
-    // Validations
-    if(!name || !email || !password || !phone){
-        res.status(400).json({
-            success:false,
-            message: "Missing required fields : name, email, password, role, phone are mandatory"
-        })
-    }
-    /*
-        AppDataSource is used to interact with database and
-        .getRepository is class of TypeORM that gives method for interact
-        with database table corresponsd entity like in this code User
-        method like findOne(),find(),create(),save()
-    */
 
-    const userData = AppDataSource.getRepository(User);
+        const { name, email, password, role, phone, city, country } = req.body;
 
-    // Check existing of entry no duplicate email allow
-    const existUser = await userData.findOne({where:{email}});
-    if(existUser){
-        return res.status(409).json({
-        success:false,
-        message: "Email already registered"
-        })
-    }
+        // Validations
+        if (!name || !email || !password || !phone) {
+            res.status(400).json({
+                success: false,
+                message: "Missing required fields : name, email, password, role, phone are mandatory"
+            })
+        }
+        /*
+            AppDataSource is used to interact with database and
+            .getRepository is class of TypeORM that gives method for interact
+            with database table corresponsd entity like in this code User
+            method like findOne(),find(),create(),save()
+        */
 
-    // We dont plaintext password directly for security purpose 
-    // like if unAuthorized purson has access of database still 
-    // he does not able to get password
-    // THis is done within using bcrypt that is package in node js
-    const hashedPass = await bcrypt.hash(password,10);
+        const userData = AppDataSource.getRepository(User);
 
-    const newUser = userData.create({
-        name,email,password:hashedPass,role,phone,city,country,
-    });
+        // Check existing of entry no duplicate email allow
+        const existUser = await userData.findOne({ where: { email } });
+        if (existUser) {
+            return res.status(409).json({
+                success: false,
+                message: "Email already registered"
+            })
+        }
 
-    // save user
-    await userData.save(newUser);
+        // We dont plaintext password directly for security purpose 
+        // like if unAuthorized purson has access of database still 
+        // he does not able to get password
+        // THis is done within using bcrypt that is package in node js
+        const hashedPass = await bcrypt.hash(password, 10);
 
-    return res.status(201).json({
-        success:true,
-        message: "User registered successfully",
+        const newUser = userData.create({
+            name, email, password: hashedPass, role, phone, city, country,
+        });
 
-    });
-    } catch(error){
-        console.error("Error in register",error.message);
+        // save user
+        await userData.save(newUser);
+
+        return res.status(201).json({
+            success: true,
+            message: "User registered successfully",
+
+        });
+    } catch (error) {
+        console.error("Error in register", error.message);
         return res.status(500).json({
-            success:false,
+            success: false,
             message: "Internal server error",
         });
     }
@@ -68,141 +69,192 @@ export const registerController = async(req,res) => {
 
 // This is login Controller
 
-export const loginController = async(req,res) => {
-    try{
-    const {email,password} = req.body;
+export const loginController = async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
-    // Validations
-    if(!email,!password){
-        return res.status(409).json({
-            success:false,
-            message:'Missing required fields : email, password'
+        // Validations
+        if (!email, !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields : email, password'
+            })
+        }
+
+
+        const userData = AppDataSource.getRepository(User);
+
+        // Check user exitency
+        const foundUser = await userData.findOne({ where: { email } })
+        if (!foundUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            })
+        }
+
+        //compare password by compare method of bcrypt
+        const isMatch = await bcrypt.compare(password, foundUser.password)
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid Credentials'
+            })
+        }
+
+        // Now we will generate token for authorization purpose
+        const JWT_SECRET = process.env.JWT_SECRET;
+
+        const token = jwt.sign(
+            {
+                id: foundUser.id,
+                role: foundUser.role,
+                email: foundUser.email,
+            },
+            JWT_SECRET,
+            { expiresIn: "1h" }
+        )
+
+        console.log(token)
+        // Store token in cookie httpOnly: true makes it safe from JS access
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict",
         })
-    }
 
-
-    const userData = AppDataSource.getRepository(User);
-
-    // Check user exitency
-    const foundUser = await userData.findOne({where: {email}})
-    if(!foundUser){
-        return res.status(404).json({
-            success:false,
-            message: "User not found",
+        res.status(200).json({
+            success: true,
+            message: 'User login Successfully',
         })
-    }
-
-    //compare password by compare method of bcrypt
-    const isMatch = await bcrypt.compare(password,foundUser.password)
-    if(!isMatch){
-        return res.status(401).json({
-            success:false,
-            message: 'Invalid Credentials'
-        })
-    }    
-
-    // Now we will generate token for authorization purpose
-    const JWT_SECRET = process.env.JWT_SECRET;
-
-    const token = jwt.sign(
-        {
-            id:foundUser.id,
-            role:foundUser.role,
-            email: foundUser.email,
-        },
-        JWT_SECRET,
-        {expiresIn:"1h"}
-    )
-
-    console.log(token)
-    // Store token in cookie httpOnly: true makes it safe from JS access
-
-    res.cookie("token",token, {
-        httpOnly:true,
-        secure: true,
-        sameSite: "strict",
-    })
-
-    res.status(201).json({
-        success:true,
-        message: 'User login Successfully',
-    })
-    }catch(error){
-        console.error('Error in login',error.message);
+    } catch (error) {
+        console.error('Error in login', error.message);
         return res.status(500).json({
-            success:false,
-            message:"Internal server error"
+            success: false,
+            message: "Internal server error"
         })
     }
 
 }
 
-
+// THis is search controller
 export const searchUserController = async (req, res) => {
-  try {
-    // we can access role from token
-    const role = req.user.role;
+    try {
+        // we can access role from token
+        const role = req.user.role;
 
-    // Only Admin can access this route
-    if (role !== "Admin") {
-      return res.status(401).json({
-        success: false,
-        message: "Access denied. Only Admin can view users.",
-      });
+        // Only Admin can access this route
+        if (role !== "Admin") {
+            return res.status(401).json({
+                success: false,
+                message: "Access denied. Only Admin can view users.",
+            });
+        }
+
+        // Get search and country from request
+        const { search, country } = req.body;
+
+        // Get repository to query database
+        const userData = AppDataSource.getRepository(User);
+
+
+        let users;
+
+        if (search && country) {
+            // Search name OR email and filter by country
+            users = await userData.find({
+                where: [
+                    { name: Like(`${search}%`), country },
+                    { email: ILike(`${search}%`), country }
+                ],
+                select: ["id", "name", "email", "role", "country"]
+            });
+        } else if (search) {
+            // Search only name OR email
+            users = await userData.find({
+                where: [
+                    { name: Like(`${search}%`) },
+                    { email: ILike(`${search}%`) }
+                ],
+                select: ["id", "name", "email", "role", "country"]
+            });
+        } else if (country) {
+            // Filter only by country
+            users = await userData.find({
+                where: { country },
+                select: ["id", "name", "email", "role", "country"]
+            });
+        } else {
+            // No filter, list all users
+            users = await userData.find({
+                select: ["id", "name", "email", "role", "country"]
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Users fetched successfully",
+            users
+        });
+
+    } catch (error) {
+        console.error("Error in searchUserController:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error"
+        });
     }
-
-    // Get search and country from request
-    const { search, country } = req.body;
-
-    // Get repository to query database
-    const userData = AppDataSource.getRepository(User);
-
-    
-    let users;
-
-    if (search && country) {
-      // Search name OR email and filter by country
-      users = await userData.find({
-        where: [
-          { name: Like(`${search}%`), country },
-          { email: ILike(`${search}%`), country }
-        ],
-        select: ["id", "name", "email", "role", "country"] 
-      });
-    } else if (search) {
-      // Search only name OR email
-      users = await userData.find({
-        where: [
-          { name: Like(`${search}%`) },
-          { email: ILike(`${search}%`) }
-        ],
-        select: ["id", "name", "email", "role", "country"]
-      });
-    } else if (country) {
-      // Filter only by country
-      users = await userData.find({
-        where: { country },
-        select: ["id", "name", "email", "role", "country"]
-      });
-    } else {
-      // No filter, list all users
-      users = await userData.find({
-        select: ["id", "name", "email", "role", "country"]
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Users fetched successfully",
-      users
-    });
-
-  } catch (error) {
-    console.error("Error in searchUserController:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error"
-    });
-  }
 };
 
+export const getUserDetailsController = async (req, res) => {
+    try {
+        // getting user role
+        const role = req.user.role;
+
+        // geting table user
+        const userData = AppDataSource.getRepository(User);
+        let userDetails;
+
+        // if staff
+        if (role === "Staff") {
+            //Staff cany see only own details
+            const id = req.user.id;
+            //no password can see
+            userDetails = await userData.findOne({ where: { id }, select: ["id", "name", "email", "role", "country"] });
+        }
+        // If this user is Admin 
+        else if (role == "Admin") {
+            //Admin can see details of any user by id
+            const id = parseInt(req.params.id);
+            userDetails = await userData.findOne({ where: { id }, select: ["id", "name", "email", "role", "country"] });
+        } 
+        // if no role found
+        else {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied"
+            });
+        }
+
+        // If not suer found in database
+        if (!userDetails) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            userDetails
+        });
+    } catch (error) {
+        console.error("Error in getUserDetailsController:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+
+} 
