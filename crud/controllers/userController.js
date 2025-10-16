@@ -16,11 +16,32 @@ export const registerController = async (req, res) => {
         const { name, email, password, role, phone, city, country } = req.body;
 
         // Validations
-        if (!name || !email || !password || !phone) {
-            res.status(400).json({
-                success: false,
-                message: "Missing required fields : name, email, password, role, phone are mandatory"
-            })
+        if (!name) {
+            return res.status(400).json({ success: false, message: "Name is required" });
+        }
+
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Email is required" });
+        } else if (!/^\S+@\S+\.\S+$/.test(email)) {
+            return res.status(400).json({ success: false, message: "Email format is invalid" });
+        }
+
+        if (!password) {
+            return res.status(400).json({ success: false, message: "Password is required" });
+        } else if (password.length < 6) {
+            return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+        }
+
+        if (!role) {
+            return res.status(400).json({ success: false, message: "Role is required" });
+        } else if (!["Admin", "Staff"].includes(role)) {
+            return res.status(400).json({ success: false, message: "Role must be Admin or Staff" });
+        }
+
+        if (!phone) {
+            return res.status(400).json({ success: false, message: "Phone is required" });
+        } else if (!/^[0-9]{10,15}$/.test(phone)) { // Example: 10-15 digit phone
+            return res.status(400).json({ success: false, message: "Phone format is invalid" });
         }
         /*
             AppDataSource is used to interact with database and
@@ -73,14 +94,29 @@ export const loginController = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Validations
-        if (!email, !password) {
+        // Validation
+        if (!email || !password) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields : email, password'
-            })
+                message: "Missing required fields: email and password are mandatory",
+            });
         }
 
+        // validation for email format
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid email format",
+            });
+        }
+
+        // password length check
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 6 characters",
+            });
+        }
 
         const userData = AppDataSource.getRepository(User);
 
@@ -228,7 +264,7 @@ export const getUserDetailsController = async (req, res) => {
             //Admin can see details of any user by id
             const id = parseInt(req.params.id);
             userDetails = await userData.findOne({ where: { id }, select: ["id", "name", "email", "role", "country"] });
-        } 
+        }
         // if no role found
         else {
             return res.status(403).json({
