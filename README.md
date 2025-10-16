@@ -49,7 +49,7 @@ A simple **Node.js + Express + TypeORM + MySQL** project for user registration, 
 ```bash
 git clone https://github.com/digvijaysinh12/node-assignment-ownai.git
 cd node-assignment-ownai
-
+cd crud
 
 Install dependencies
 
