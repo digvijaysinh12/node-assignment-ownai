@@ -150,7 +150,6 @@ Response:
 4. Get User Details
 
 GET /user/:id
-Headers: Authorization: Bearer <JWT_TOKEN>
 
 Staff → can only view their own details
 
